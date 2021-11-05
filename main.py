@@ -5,21 +5,21 @@ import argparse
 
 import config
 
-intents = Intents.GUILD_MESSAGES
+intents = Intents.GUILD_MESSAGES | Intents.DM_MESSAGES
 
 bot = lightbulb.Bot(token=config.BOT_TOKEN, prefix=config.BOT_PREFIX, logs="DEBUG", intents=intents)
 
 parser = argparse.ArgumentParser(description='Bot CLI arguments')
 parser.add_argument('--all', help='load all modules', action='store_true')
+parser.add_argument('-r', '--roll', help='load roll module', action='store_true')
 args = parser.parse_args()
 
 # Load plugins from extensions folder
 for file in os.listdir("./extensions/"):
-    print(file)
     if file.endswith(".py") and not file.startswith("_") and (args.all or file[:-3] in args):
-        print(file[:-3])
         try:
             bot.load_extension(f"extensions.{file[:-3]}")
+            print(f"Extension \"{file[:-3]}\" loaded successfully.")
         except lightbulb.errors.ExtensionAlreadyLoaded:
             print(f"Extension \"{file[:-3]}\" is already loaded.")
         except lightbulb.errors.ExtensionMissingLoad:
