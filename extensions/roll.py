@@ -51,7 +51,7 @@ class Roll(lightbulb.Plugin):
         splitted[1] = splitted[1] if len(splitted[1]) < max_len else splitted[1][:max_len - 3] + "..."
         return splitted
 
-    # created as command, not group, because do
+    # created as command, not group, because wanted to reuse commands in slash commands
     @lightbulb.command()
     async def roll(self, ctx: lightbulb.Context, reps: Optional[int] = 1, *, args=''):
         if reps < 1 or reps > self._max_rolls:
@@ -73,8 +73,7 @@ class Roll(lightbulb.Plugin):
                                   p2_name=split_command[4] if len(split_command) > 4 else 'Player 2',
                                   )
         else:
-            # TODO: Add dice parsing
-            pass
+            await self._default_roll(ctx, reps, command, comment)
 
     async def _color_roll(self, ctx: lightbulb.Context, reps: int, color: str, comment: str):
         embed = Embed(title=f'Roll for {ctx.member.display_name if ctx.guild_id else ctx.author.username}',
@@ -94,7 +93,7 @@ class Roll(lightbulb.Plugin):
         await ctx.respond(embed=embed)
 
     async def _duel_roll(self, ctx: lightbulb.Context, comment: str, p1_dice: str, p2_dice: str, p1_name: str,
-                         p2_name: str):
+                         p2_name: str) -> None:
         try:
             n_rolls1, dice_size1, modifier1, operator1, threshold1 = self._split_dice(p1_dice)
             n_rolls2, dice_size2, modifier2, operator2, threshold2 = self._split_dice(p2_dice)
@@ -117,6 +116,26 @@ class Roll(lightbulb.Plugin):
         embed.add_field(name="Winner:",
                         value=p1_name if result1 > result2 else p2_name if result1 < result2 else "Draw!")
         embed.add_field(name="Rolls:", value=f"{p1_name}: {rolls1}\n{p2_name}: {rolls2}")
+        await ctx.respond(embed=embed)
+
+    async def _default_roll(self, ctx: lightbulb.Context, reps: int, command: str, comment: str) -> None:
+        try:
+            n_rolls, dice_size, modifier, operator, threshold = self._split_dice(command)
+        except WrongCommandFormula as e:
+            await ctx.respond(f'Wrong dice formula: {e.command}')
+            return
+        except WrongDiceSize as e:
+            await ctx.respond(f'Wrong dice size: {e.dice_size}')
+            return
+        except WrongDiceCount as e:
+            await ctx.respond(f'Wrong dice count: {e.dice_count}')
+            return
+        embed = Embed(title=f'Roll for {ctx.member.display_name if ctx.guild_id else ctx.author.username}',
+                      description=comment,
+                      color=[255, 0, 0])
+        for i in range(reps):
+            rolls, result = self._roll_dice(dice_size, n_rolls, modifier, operator)
+            embed.add_field(name=f'Roll #{i + 1}: Result {result}', value=f"{rolls}", inline=True)
         await ctx.respond(embed=embed)
 
     def _roll_dice(self, dice_size: int = 10, n_of_rolls: int = 1, roll_modifier: int = 0,
